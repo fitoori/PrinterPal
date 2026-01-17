@@ -6,6 +6,15 @@ set -euo pipefail
 
 log() { printf '[PrinterPal] %s\n' "$*"; }
 die() { printf '[PrinterPal] ERROR: %s\n' "$*" >&2; exit 1; }
+usage() {
+  cat <<'EOF_USAGE'
+Usage: ./install.sh [--update]
+
+Options:
+  --update    Skip OS package installation and update the app in place.
+  --help      Show this help message.
+EOF_USAGE
+}
 
 require_root() {
   if [[ "$(id -u)" -ne 0 ]]; then
@@ -16,6 +25,22 @@ require_root() {
 cmd_exists() {
   command -v "$1" >/dev/null 2>&1
 }
+
+UPDATE_ONLY=false
+for arg in "$@"; do
+  case "${arg}" in
+    --update)
+      UPDATE_ONLY=true
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      die "Unknown option: ${arg}"
+      ;;
+  esac
+done
 
 require_root
 
@@ -46,22 +71,26 @@ SYSTEMD_UNIT_DST="/etc/systemd/system/printerpal.service"
 
 REQUIREMENTS="${SCRIPT_DIR}/requirements.txt"
 
-log "Updating package index..."
-apt-get update -y
+if [[ "${UPDATE_ONLY}" == "false" ]]; then
+  log "Updating package index..."
+  apt-get update -y
 
-log "Installing OS packages..."
-DEBIAN_FRONTEND=noninteractive apt-get install -y \
-  python3 \
-  python3-venv \
-  python3-pip \
-  cups \
-  cups-client \
-  avahi-daemon \
-  avahi-utils \
-  poppler-utils \
-  ghostscript \
-  sudo \
-  rsync
+  log "Installing OS packages..."
+  DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    python3 \
+    python3-venv \
+    python3-pip \
+    cups \
+    cups-client \
+    avahi-daemon \
+    avahi-utils \
+    poppler-utils \
+    ghostscript \
+    sudo \
+    rsync
+else
+  log "Update mode: skipping OS package installation."
+fi
 
 if ! cmd_exists python3; then
   die "python3 not installed (unexpected)."

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="pp-grid">
+  <section class="pp-card" aria-label="Upload">
+    <h2>Upload</h2>
+    <p class="pp-muted">PDF and common image formats. Files stay local on the Pi.</p>
+
+    <form id="ppUploadForm" class="pp-upload" action="/upload" method="post" enctype="multipart/form-data">
+      <input type="file" name="file" id="ppFileInput" accept=".pdf,.png,.jpg,.jpeg,.bmp,.tif,.tiff" required>
+      <button type="submit" class="pp-btn">Upload</button>
+    </form>
+
+    <div class="pp-row pp-row-between">
+      <h3 class="pp-h3">Recent files</h3>
+      <button id="ppRefreshFiles" class="pp-btn pp-btn-ghost" type="button">Refresh</button>
+    </div>
+
+    <div id="ppFileList" class="pp-file-list" role="list"></div>
+  </section>
+
+  <section class="pp-card" aria-label="Preview and print">
+    <h2>Preview & Print</h2>
+
+    <div class="pp-preview-toolbar">
+      <label class="pp-label">
+        Mode
+        <select id="ppModeSelect" class="pp-select">
+          <option value="raw">Raw (no processing)</option>
+          <option value="grayscale">Greyscale</option>
+          <option value="bw">B/W threshold</option>
+          <option value="dither">Dithered B/W</option>
+          <option value="outline">Outline only</option>
+        </select>
+      </label>
+
+      <label class="pp-label">
+        Page
+        <input id="ppPageInput" class="pp-input" type="number" min="1" value="1">
+      </label>
+
+      <label class="pp-label">
+        Copies
+        <input id="ppCopiesInput" class="pp-input" type="number" min="1" max="99" value="1">
+      </label>
+    </div>
+
+    <div class="pp-preview">
+      <div class="pp-preview-placeholder" id="ppPreviewPlaceholder">
+        Select a file to preview and print.
+      </div>
+      <img id="ppPreviewImg" class="pp-preview-img" alt="Print preview" />
+    </div>
+
+    <div class="pp-print-bar">
+      <label class="pp-label pp-grow">
+        Printer
+        <select id="ppPrinterSelect" class="pp-select"></select>
+      </label>
+      <button id="ppPrintBtn" class="pp-btn pp-btn-primary" type="button" disabled>Send to printer</button>
+    </div>
+
+    <div id="ppActionMsg" class="pp-msg" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="pp-card" aria-label="Status">
+    <h2>Status</h2>
+
+    <div class="pp-status" id="ppStatus">
+      <div class="pp-status-row"><span class="pp-muted">CUPS</span><span id="ppCupsStatus">Unknown</span></div>
+      <div class="pp-status-row"><span class="pp-muted">Default printer</span><span id="ppDefaultPrinter">—</span></div>
+      <div class="pp-status-row"><span class="pp-muted">Active jobs</span><span id="ppActiveJobs">—</span></div>
+      <div class="pp-status-row"><span class="pp-muted">Completed jobs</span><span id="ppCompletedJobs">—</span></div>
+    </div>
+
+    <h3 class="pp-h3">Queue</h3>
+    <div id="ppQueue" class="pp-queue"></div>
+
+    <h3 class="pp-h3">Settings</h3>
+    <div class="pp-settings">
+      <button id="ppOpenSettings" class="pp-btn pp-btn-ghost" type="button">Open configuration</button>
+      <div id="ppSettingsPanel" class="pp-settings-panel" hidden>
+        <label class="pp-label">
+          Default printer
+          <input id="ppCfgDefaultPrinter" class="pp-input" type="text" placeholder="(leave blank for system default)">
+        </label>
+
+        <div class="pp-grid-2">
+          <label class="pp-label">
+            Preview DPI
+            <input id="ppCfgPreviewDpi" class="pp-input" type="number" min="72" max="600">
+          </label>
+          <label class="pp-label">
+            Print DPI
+            <input id="ppCfgPrintDpi" class="pp-input" type="number" min="72" max="1200">
+          </label>
+        </div>
+
+        <div class="pp-grid-2">
+          <label class="pp-label">
+            B/W threshold
+            <input id="ppCfgThreshold" class="pp-input" type="number" min="1" max="254">
+          </label>
+          <label class="pp-label">
+            Max PDF pages to process
+            <input id="ppCfgMaxPages" class="pp-input" type="number" min="1" max="500">
+          </label>
+        </div>
+
+        <label class="pp-label pp-checkbox">
+          <input id="ppCfgAirPrint" type="checkbox">
+          Auto-enable AirPrint advertising
+        </label>
+
+        <div class="pp-row pp-row-between">
+          <button id="ppSaveSettings" class="pp-btn pp-btn-primary" type="button">Save configuration</button>
+          <button id="ppCloseSettings" class="pp-btn pp-btn-ghost" type="button">Close</button>
+        </div>
+
+        <div id="ppSettingsMsg" class="pp-msg" role="status" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

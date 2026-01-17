@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# PrinterPal privileged helper.
+# This script is intended to be executed via sudo with a restricted sudoers rule.
+
+log() { printf '[printerpal-root] %s\n' "$*"; }
+die() { printf '[printerpal-root] ERROR: %s\n' "$*" >&2; exit 1; }
+
+require_root() {
+  if [[ "$(id -u)" -ne 0 ]]; then
+    die "must run as root"
+  fi
+}
+
+cmd_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+sanitize() {
+  # For filenames only. Queue names are expected to be CUPS-safe already.
+  echo "$1" | tr -c 'A-Za-z0-9_.-' '_' | sed 's/_\{2,\}/_/g'
+}
+
+ensure_airprint() {
+  require_root
+
+  cmd_exists lpstat || die "lpstat not found (install cups-client)"
+  cmd_exists cupsctl || die "cupsctl not found (install cups)"
+  cmd_exists systemctl || die "systemctl not found"
+  cmd_exists avahi-daemon || log "avahi-daemon binary not found; continuing (service may still exist)"
+
+  log "Enabling CUPS printer sharing (LAN)..."
+  # Share printers and allow remote IPP connections on port 631.
+  cupsctl --share-printers --remote-any >/dev/null
+
+  log "Ensuring services are enabled..."
+  systemctl enable --now cups >/dev/null || true
+  systemctl enable --now avahi-daemon >/dev/null || true
+
+  local svc_dir="/etc/avahi/services"
+  mkdir -p "$svc_dir"
+
+  # Clean out prior PrinterPal-generated service files.
+  rm -f "$svc_dir"/printerpal-*.service
+
+  local printers
+  printers=$(lpstat -p 2>/dev/null | awk '/^printer /{print $2}')
+  if [[ -z "$printers" ]]; then
+    log "No CUPS printers found. Nothing to advertise."
+    return 0
+  fi
+
+  local host_name
+  host_name="%h"
+
+  log "Generating Avahi AirPrint service files..."
+  while read -r qname; do
+    [[ -z "$qname" ]] && continue
+    local safe
+    safe="$(sanitize "$qname")"
+    local fpath="$svc_dir/printerpal-${safe}.service"
+
+    cat > "$fpath" <<XML
+<?xml version="1.0" standalone='no'?>
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<service-group>
+  <name replace-wildcards="yes">${host_name} - ${qname}</name>
+  <service>
+    <type>_ipp._tcp</type>
+    <subtype>_universal._sub._ipp._tcp</subtype>
+    <port>631</port>
+    <txt-record>txtvers=1</txt-record>
+    <txt-record>qtotal=1</txt-record>
+    <txt-record>rp=printers/${qname}</txt-record>
+    <txt-record>ty=${qname}</txt-record>
+    <txt-record>note=PrinterPal</txt-record>
+    <txt-record>adminurl=http://${host_name}:631/printers/${qname}</txt-record>
+    <txt-record>pdl=application/pdf,image/urf,image/jpeg,image/png</txt-record>
+    <txt-record>product=(Printer)</txt-record>
+    <txt-record>URF=V1.4,CP1,RS300,SRGB24,W8,OB10,OFU0,IFU0,DM1</txt-record>
+  </service>
+</service-group>
+XML
+
+    chmod 0644 "$fpath"
+    log "  wrote ${fpath}"
+  done <<< "$printers"
+
+  log "Restarting Avahi to publish services..."
+  systemctl restart avahi-daemon >/dev/null || true
+
+  log "AirPrint advertising attempted."
+  return 0
+}
+
+restart_host() {
+  require_root
+  log "Reboot requested by PrinterPal."
+  systemctl reboot
+}
+
+main() {
+  local action="${1:-}"
+  case "$action" in
+    ensure-airprint)
+      ensure_airprint
+      ;;
+    restart-host)
+      restart_host
+      ;;
+    *)
+      die "usage: $0 {ensure-airprint|restart-host}"
+      ;;
+  esac
+}
+
+main "$@"

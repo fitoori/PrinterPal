@@ -1,0 +1,48 @@
+[Unit]
+Description=PrinterPal web UI
+After=network-online.target cups.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=printerpal
+Group=printerpal
+WorkingDirectory=/opt/printerpal
+
+Environment=PRINTERPAL_CONFIG=/etc/printerpal/config.json
+Environment=PRINTERPAL_UPLOAD_DIR=/var/lib/printerpal/uploads
+Environment=PRINTERPAL_CACHE_DIR=/var/lib/printerpal/cache
+Environment=PRINTERPAL_ROOT_HELPER=/usr/local/sbin/printerpal-root
+
+ExecStart=/opt/printerpal/venv/bin/gunicorn \
+  --bind 0.0.0.0:80 \
+  --workers 2 \
+  --threads 4 \
+  --timeout 120 \
+  --access-logfile - \
+  --error-logfile - \
+  app:app
+
+Restart=on-failure
+RestartSec=2
+
+# Bind to port 80 without running as root.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+# Hardening
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectControlGroups=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+SystemCallArchitectures=native
+
+ReadWritePaths=/var/lib/printerpal /etc/printerpal
+
+[Install]
+WantedBy=multi-user.target

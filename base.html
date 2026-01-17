@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PrinterPal</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/printerpal.css') }}">
+</head>
+<body>
+  <header class="pp-topbar">
+    <div class="pp-brand">
+      <span class="pp-brand-name">PrinterPal</span>
+      <span class="pp-brand-tagline">Friendly printing for your Pi</span>
+    </div>
+
+    <div class="pp-menu">
+      <button id="ppMenuButton" class="pp-menu-button" aria-haspopup="true" aria-expanded="false" title="Menu">
+        <span class="pp-menu-icon" aria-hidden="true">🖨️</span>
+        <span class="pp-sr-only">Menu</span>
+      </button>
+      <div id="ppMenuDropdown" class="pp-menu-dropdown" role="menu" aria-label="PrinterPal menu">
+        <button class="pp-menu-item" id="ppMenuEnsureAirPrint" role="menuitem">Refresh AirPrint</button>
+        <div class="pp-menu-sep"></div>
+        <button class="pp-menu-item" id="ppMenuDarkMode" role="menuitemcheckbox" aria-checked="false">OLED dark mode</button>
+        <button class="pp-menu-item" id="ppMenuEinkMode" role="menuitemcheckbox" aria-checked="false">E‑ink monochrome mode</button>
+        <div class="pp-menu-sep"></div>
+        <button class="pp-menu-item pp-danger" id="ppMenuRestartHost" role="menuitem">Restart host</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="pp-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="pp-footer">
+    <span>PrinterPal</span>
+    <span class="pp-footer-dot">•</span>
+    <span id="ppFooterStatus">Disconnected</span>
+  </footer>
+
+  <script>
+    window.PRINTERPAL_DEFAULT_MODE = {{ default_mode | tojson }};
+    window.PRINTERPAL_UI_DEFAULTS = {{ ui_defaults | tojson }};
+  </script>
+  <script src="{{ url_for('static', filename='js/printerpal.js') }}"></script>
+</body>
+</html>

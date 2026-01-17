@@ -54,7 +54,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_USER="printerpal"
 APP_GROUP="printerpal"
 APP_HOME="/opt/printerpal"
-VENV_DIR="${APP_HOME}/venv"
 
 ETC_DIR="/etc/printerpal"
 CFG_FILE="${ETC_DIR}/config.json"
@@ -77,8 +76,10 @@ if [[ "${UPDATE_ONLY}" == "false" ]]; then
   log "Installing OS packages..."
   DEBIAN_FRONTEND=noninteractive apt-get install -y \
     python3 \
-    python3-venv \
-    python3-pip \
+    python3-flask \
+    python3-gunicorn \
+    python3-pil \
+    python3-img2pdf \
     cups \
     cups-client \
     avahi-daemon \
@@ -116,12 +117,9 @@ install -d -o "${APP_USER}" -g "${APP_GROUP}" -m 0750 "${DATA_DIR}" "${UPLOAD_DI
 install -d -o root -g "${APP_GROUP}" -m 0770 "${ETC_DIR}"
 
 log "Deploying application to ${APP_HOME}..."
-# Keep venv if it exists.
 rsync -a --delete \
-  --exclude 'venv' \
   "${SCRIPT_DIR}/" "${APP_HOME}/"
 chown -R "${APP_USER}:${APP_GROUP}" "${APP_HOME}"
-REQUIREMENTS="${APP_HOME}/requirements.txt"
 
 log "Installing root helper to ${ROOT_HELPER_DST}..."
 install -o root -g root -m 0750 "${ROOT_HELPER_SRC}" "${ROOT_HELPER_DST}"
@@ -149,19 +147,6 @@ fi
 # Ensure config ownership allows web UI edits.
 chown root:"${APP_GROUP}" "${CFG_FILE}" || true
 chmod 0660 "${CFG_FILE}" || true
-
-log "Creating Python virtual environment..."
-if [[ ! -d "${VENV_DIR}" ]]; then
-  sudo -u "${APP_USER}" -g "${APP_GROUP}" python3 -m venv "${VENV_DIR}"
-fi
-
-log "Installing Python requirements from ${REQUIREMENTS}..."
-if [[ ! -f "${REQUIREMENTS}" ]]; then
-  die "requirements.txt not found at ${REQUIREMENTS}"
-fi
-
-sudo -u "${APP_USER}" -g "${APP_GROUP}" "${VENV_DIR}/bin/python" -m pip install --upgrade pip
-sudo -u "${APP_USER}" -g "${APP_GROUP}" "${VENV_DIR}/bin/python" -m pip install -r "${REQUIREMENTS}"
 
 log "Installing systemd unit..."
 install -o root -g root -m 0644 "${SYSTEMD_UNIT_SRC}" "${SYSTEMD_UNIT_DST}"

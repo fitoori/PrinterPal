@@ -11,6 +11,13 @@ from .util import CmdResult, CommandError, PrinterPalError, run_cmd
 
 
 _LPSTAT_PRINTER_RE = re.compile(r"^printer\s+(?P<name>\S+)\s+(?P<state>idle|disabled|busy)\s+.*", re.I)
+_CUPS_PRINTER_INFO_RE = re.compile(r"^Info\s+(?P<info>.+)$")
+_CUPS_PRINTER_START_RE = re.compile(r"^<(?:Printer|DefaultPrinter)\s+(?P<name>[^>]+)>")
+
+_CUPS_PRINTER_CONF_PATHS = (
+    "/etc/cups/printers.conf",
+    "/etc/cups/printers.conf.O",
+)
 
 
 @dataclass(frozen=True)
@@ -19,6 +26,7 @@ class PrinterInfo:
     state: str
     is_default: bool
     accepting: Optional[bool]
+    display_name: Optional[str]
 
 
 def _safe_timeout() -> float:
@@ -44,8 +52,47 @@ def get_default_printer() -> str:
         return ""
 
 
+def _load_cups_printer_info() -> Dict[str, str]:
+    info_map: Dict[str, str] = {}
+    for path in _CUPS_PRINTER_CONF_PATHS:
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as handle:
+                current: Optional[str] = None
+                for raw_line in handle:
+                    line = raw_line.strip()
+                    if not line:
+                        continue
+                    start = _CUPS_PRINTER_START_RE.match(line)
+                    if start:
+                        current = start.group("name").strip()
+                        continue
+                    if line.startswith("</Printer>") or line.startswith("</DefaultPrinter>"):
+                        current = None
+                        continue
+                    if current:
+                        info = _CUPS_PRINTER_INFO_RE.match(line)
+                        if info:
+                            label = info.group("info").strip().strip('"')
+                            if label:
+                                info_map[current] = label
+        except OSError:
+            continue
+        if info_map:
+            break
+    return info_map
+
+
+def get_default_printer_display() -> str:
+    default = get_default_printer()
+    if not default:
+        return ""
+    info_map = _load_cups_printer_info()
+    return info_map.get(default, default)
+
+
 def list_printers() -> List[PrinterInfo]:
     default = get_default_printer()
+    info_map = _load_cups_printer_info()
     printers: List[PrinterInfo] = []
 
     res = run_cmd(["lpstat", "-p"], timeout_s=_safe_timeout(), check=False)
@@ -65,6 +112,7 @@ def list_printers() -> List[PrinterInfo]:
                 state=state,
                 is_default=(name == default),
                 accepting=accepting,
+                display_name=info_map.get(name),
             )
         )
 
@@ -85,6 +133,7 @@ def list_printers() -> List[PrinterInfo]:
                     state=p.state,
                     is_default=p.is_default,
                     accepting=accepting,
+                    display_name=p.display_name,
                 )
                 break
 

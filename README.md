@@ -25,3 +25,11 @@ sudo journalctl -u printerpal -f
 - Uploads: /var/lib/printerpal/uploads
 - Preview cache: /var/lib/printerpal/cache
 - Config: /etc/printerpal/config.json
+
+## Project layout
+- `app.py`: Application entry point (gunicorn target).
+- `printerpal/`: Python package (Flask app, CUPS integration, helpers).
+- `printerpal/templates/`: Jinja templates.
+- `printerpal/static/`: CSS/JS assets.
+- `scripts/`: Privileged helper scripts.
+- `systemd/`: Systemd service unit files.

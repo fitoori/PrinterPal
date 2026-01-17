@@ -145,7 +145,7 @@
     });
   }
 
-  function renderPrinters(printers, defaultPrinter) {
+  function renderPrinters(printers, defaultPrinterDisplay) {
     const sel = $('ppPrinterSelect');
     if (!sel) return;
 
@@ -153,13 +153,15 @@
 
     const optAuto = document.createElement('option');
     optAuto.value = '';
-    optAuto.textContent = defaultPrinter ? `System default (${defaultPrinter})` : 'System default';
+    optAuto.textContent = defaultPrinterDisplay ? `System default (${defaultPrinterDisplay})` : 'System default';
     sel.appendChild(optAuto);
 
     (printers || []).forEach((p) => {
       const opt = document.createElement('option');
       opt.value = p.name;
-      const label = `${p.name} • ${p.state}${p.accepting === false ? ' • not accepting' : ''}`;
+      const display = p.display_name || p.name;
+      const defaultTag = p.is_default ? ' (default)' : '';
+      const label = `${display}${defaultTag} • ${p.state}${p.accepting === false ? ' • not accepting' : ''}`;
       opt.textContent = label;
       sel.appendChild(opt);
     });
@@ -243,11 +245,11 @@
 
     const s = status;
     $('ppCupsStatus').textContent = s.cups_available ? 'Available' : 'Not available';
-    $('ppDefaultPrinter').textContent = s.default_printer || '—';
+    $('ppDefaultPrinter').textContent = s.default_printer_label || s.default_printer || '—';
     $('ppActiveJobs').textContent = (s.stats && (s.stats.active_jobs !== undefined)) ? String(s.stats.active_jobs) : '—';
     $('ppCompletedJobs').textContent = (s.stats && (s.stats.completed_jobs !== undefined)) ? String(s.stats.completed_jobs) : '—';
 
-    renderPrinters(s.printers || [], s.default_printer || '');
+    renderPrinters(s.printers || [], s.default_printer_display || s.default_printer || '');
     renderQueue(s.jobs || []);
 
     setFooterStatus('Live');
@@ -321,10 +323,10 @@
   async function refreshStatusOnly() {
     const status = await apiGet('/api/status');
     $('ppCupsStatus').textContent = status.cups_available ? 'Available' : 'Not available';
-    $('ppDefaultPrinter').textContent = status.default_printer || '—';
+    $('ppDefaultPrinter').textContent = status.default_printer_label || status.default_printer || '—';
     $('ppActiveJobs').textContent = (status.stats && (status.stats.active_jobs !== undefined)) ? String(status.stats.active_jobs) : '—';
     $('ppCompletedJobs').textContent = (status.stats && (status.stats.completed_jobs !== undefined)) ? String(status.stats.completed_jobs) : '—';
-    renderPrinters(status.printers || [], status.default_printer || '');
+    renderPrinters(status.printers || [], status.default_printer_display || status.default_printer || '');
     renderQueue(status.jobs || []);
   }
 
@@ -504,10 +506,10 @@
 
         const s = payload.status || {};
         $('ppCupsStatus').textContent = s.cups_available ? 'Available' : 'Not available';
-        $('ppDefaultPrinter').textContent = s.default_printer || '—';
+        $('ppDefaultPrinter').textContent = s.default_printer_label || s.default_printer || '—';
         $('ppActiveJobs').textContent = (s.stats && (s.stats.active_jobs !== undefined)) ? String(s.stats.active_jobs) : '—';
         $('ppCompletedJobs').textContent = (s.stats && (s.stats.completed_jobs !== undefined)) ? String(s.stats.completed_jobs) : '—';
-        renderPrinters(s.printers || [], s.default_printer || '');
+        renderPrinters(s.printers || [], s.default_printer_display || s.default_printer || '');
         renderQueue(s.jobs || []);
 
         // Keep preview in sync if file still exists.

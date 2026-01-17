@@ -29,6 +29,7 @@ from .imageproc import SUPPORTED_IMAGE_EXTS, prepare_print_file, render_preview_
 from .printer import (
     cups_available,
     get_default_printer,
+    get_default_printer_display,
     job_stats,
     list_printers,
     printer_detail,
@@ -193,6 +194,8 @@ def create_app() -> Flask:
         cfg = app.config["PP_CFG"]
         printers = [p.__dict__ for p in list_printers()] if cups_available() else []
         default = get_default_printer()
+        default_display = get_default_printer_display()
+        default_label = f"{default_display} (default)" if default_display else ""
         stats = job_stats() if cups_available() else {}
         jobs = queue_jobs() if cups_available() else []
 
@@ -225,6 +228,8 @@ def create_app() -> Flask:
                 "cups_available": cups_available(),
                 "scheduler": scheduler_status(),
                 "default_printer": default,
+                "default_printer_display": default_display,
+                "default_printer_label": default_label,
                 "printers": printers,
                 "jobs": jobs,
                 "stats": stats,

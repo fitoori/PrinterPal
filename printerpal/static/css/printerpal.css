@@ -350,6 +350,16 @@ body {
   opacity: 0.65;
 }
 
+.pp-footer-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.pp-footer-link:hover,
+.pp-footer-link:focus {
+  text-decoration: underline;
+}
+
 /* Menu */
 .pp-menu {
   position: relative;

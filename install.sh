@@ -166,6 +166,10 @@ sudo -u "${APP_USER}" -g "${APP_GROUP}" "${VENV_DIR}/bin/python" -m pip install 
 log "Installing systemd unit..."
 install -o root -g root -m 0644 "${SYSTEMD_UNIT_SRC}" "${SYSTEMD_UNIT_DST}"
 
+if [[ ! -f "${SYSTEMD_UNIT_DST}" ]]; then
+  die "Failed to install systemd unit to ${SYSTEMD_UNIT_DST}"
+fi
+
 log "Reloading systemd..."
 systemctl daemon-reload
 
@@ -180,6 +184,11 @@ log "Enabling and starting PrinterPal service..."
 systemctl enable --now printerpal
 
 # Smoke check.
+log "Verifying service is enabled..."
+if ! systemctl is-enabled --quiet printerpal; then
+  die "printerpal.service is not enabled. Re-run installer without --update."
+fi
+
 log "Verifying service is active..."
 if ! systemctl is-active --quiet printerpal; then
   log "printerpal.service is not active. Recent logs:"

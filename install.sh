@@ -44,7 +44,6 @@ ROOT_HELPER_DST="/usr/local/sbin/printerpal-root"
 SYSTEMD_UNIT_SRC="${SCRIPT_DIR}/systemd/printerpal.service"
 SYSTEMD_UNIT_DST="/etc/systemd/system/printerpal.service"
 
-REQUIREMENTS="${SCRIPT_DIR}/requirements.txt"
 
 log "Updating package index..."
 apt-get update -y
@@ -93,6 +92,7 @@ rsync -a --delete \
   --exclude 'venv' \
   "${SCRIPT_DIR}/" "${APP_HOME}/"
 chown -R "${APP_USER}:${APP_GROUP}" "${APP_HOME}"
+REQUIREMENTS="${APP_HOME}/requirements.txt"
 
 log "Installing root helper to ${ROOT_HELPER_DST}..."
 install -o root -g root -m 0750 "${ROOT_HELPER_SRC}" "${ROOT_HELPER_DST}"

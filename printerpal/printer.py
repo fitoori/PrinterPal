@@ -12,7 +12,7 @@ from .util import CmdResult, CommandError, PrinterPalError, run_cmd
 
 _LPSTAT_PRINTER_RE = re.compile(r"^printer\s+(?P<name>\S+)\s+(?P<state>idle|disabled|busy)\s+.*", re.I)
 _CUPS_PRINTER_INFO_RE = re.compile(r"^Info\s+(?P<info>.+)$")
-_CUPS_PRINTER_START_RE = re.compile(r"^<Printer\s+(?P<name>[^>]+)>")
+_CUPS_PRINTER_START_RE = re.compile(r"^<(?:Printer|DefaultPrinter)\s+(?P<name>[^>]+)>")
 
 _CUPS_PRINTER_CONF_PATHS = (
     "/etc/cups/printers.conf",
@@ -66,7 +66,7 @@ def _load_cups_printer_info() -> Dict[str, str]:
                     if start:
                         current = start.group("name").strip()
                         continue
-                    if line.startswith("</Printer>"):
+                    if line.startswith("</Printer>") or line.startswith("</DefaultPrinter>"):
                         current = None
                         continue
                     if current:

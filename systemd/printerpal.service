@@ -14,7 +14,7 @@ Environment=PRINTERPAL_UPLOAD_DIR=/var/lib/printerpal/uploads
 Environment=PRINTERPAL_CACHE_DIR=/var/lib/printerpal/cache
 Environment=PRINTERPAL_ROOT_HELPER=/usr/local/sbin/printerpal-root
 
-ExecStart=/opt/printerpal/venv/bin/gunicorn \
+ExecStart=/usr/bin/python3 -m gunicorn \
   --bind 0.0.0.0:80 \
   --workers 2 \
   --threads 4 \

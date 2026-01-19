@@ -70,6 +70,19 @@ check_runtime_deps() {
   fi
 }
 
+missing_python_modules() {
+  local missing=()
+  local modules=(flask gunicorn PIL img2pdf)
+
+  for module in "${modules[@]}"; do
+    if ! check_python_module "${module}"; then
+      missing+=("${module}")
+    fi
+  done
+
+  printf '%s\n' "${missing[@]}"
+}
+
 UPDATE_ONLY=false
 for arg in "$@"; do
   case "${arg}" in
@@ -141,6 +154,18 @@ if ! cmd_exists python3; then
 fi
 
 check_runtime_deps
+
+if [[ "${UPDATE_ONLY}" == "false" ]]; then
+  mapfile -t missing_modules < <(missing_python_modules)
+  if [[ "${#missing_modules[@]}" -gt 0 ]]; then
+    log "Installing missing Python modules with pip: ${missing_modules[*]}"
+    if ! cmd_exists pip3; then
+      log "Installing python3-pip..."
+      DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip
+    fi
+    pip3 install --upgrade --requirement "${SCRIPT_DIR}/requirements.txt"
+  fi
+fi
 
 PYVER="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
 log "Python version: ${PYVER}"

@@ -290,7 +290,7 @@ def create_app() -> Flask:
                 threshold=int(cfg["printing"]["bw_threshold"]),
             )
         except PrinterPalError as e:
-            abort(400, description=str(e))
+            return Response(str(e), status=400, mimetype="text/plain")
 
         return Response(png, mimetype="image/png")
 

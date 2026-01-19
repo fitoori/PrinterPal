@@ -7,6 +7,7 @@
     selectedFile: null,
     printers: [],
     config: null,
+    previewUrl: null,
     ui: {
       dark: false,
       eink: false,
@@ -199,27 +200,54 @@
     if (ph) ph.style.display = visible ? 'none' : 'block';
   }
 
-  function updatePreview() {
+  function cleanupPreviewUrl() {
+    if (state.previewUrl) {
+      URL.revokeObjectURL(state.previewUrl);
+      state.previewUrl = null;
+    }
+  }
+
+  async function updatePreview() {
     const img = $('ppPreviewImg');
     if (!img) return;
 
     if (!state.selectedFile) {
       setPreviewVisible(false);
+      cleanupPreviewUrl();
       return;
     }
 
     const mode = $('ppModeSelect') ? $('ppModeSelect').value : (window.PRINTERPAL_DEFAULT_MODE || 'grayscale');
     const page = $('ppPageInput') ? Math.max(1, parseInt($('ppPageInput').value || '1', 10)) : 1;
     const w = Math.min(1400, Math.max(320, Math.floor((img.parentElement ? img.parentElement.clientWidth : 720) - 24)));
-
-    img.onload = () => { setPreviewVisible(true); };
-    img.onerror = () => {
-      setPreviewVisible(false);
-      showMsg('ppActionMsg', 'Preview failed. (Is the file type supported?)', true);
-    };
-
     const url = `/api/preview/${encodeURIComponent(state.selectedFile.name)}?mode=${encodeURIComponent(mode)}&page=${page}&w=${w}&_=${Date.now()}`;
-    img.src = url;
+
+    cleanupPreviewUrl();
+    setPreviewVisible(false);
+
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) {
+        const txt = await res.text();
+        let msg = txt || 'Preview failed.';
+        try {
+          const doc = new DOMParser().parseFromString(txt, 'text/html');
+          if (doc && doc.body && doc.body.textContent) {
+            msg = doc.body.textContent.trim() || msg;
+          }
+        } catch (_) {
+          // noop
+        }
+        showMsg('ppActionMsg', `Preview failed: ${msg}`, true);
+        return;
+      }
+      const blob = await res.blob();
+      state.previewUrl = URL.createObjectURL(blob);
+      img.onload = () => { setPreviewVisible(true); };
+      img.src = state.previewUrl;
+    } catch (err) {
+      showMsg('ppActionMsg', `Preview failed: ${err.message || err}`, true);
+    }
   }
 
   function selectFile(file) {

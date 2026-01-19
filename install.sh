@@ -26,6 +26,50 @@ cmd_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+check_python_module() {
+  local module="$1"
+  python3 - <<PY 2>/dev/null
+import importlib
+import sys
+try:
+    importlib.import_module("${module}")
+except Exception:
+    sys.exit(1)
+PY
+}
+
+check_runtime_deps() {
+  local missing=()
+  local missing_cmds=()
+  local modules=(flask gunicorn PIL img2pdf)
+  local cmds=(lp lpstat pdfinfo pdftoppm gs)
+
+  for module in "${modules[@]}"; do
+    if ! check_python_module "${module}"; then
+      missing+=("${module}")
+    fi
+  done
+
+  for cmd in "${cmds[@]}"; do
+    if ! cmd_exists "${cmd}"; then
+      missing_cmds+=("${cmd}")
+    fi
+  done
+
+  if [[ "${#missing[@]}" -gt 0 || "${#missing_cmds[@]}" -gt 0 ]]; then
+    printf '[PrinterPal] Missing runtime dependencies detected.\n' >&2
+    if [[ "${#missing[@]}" -gt 0 ]]; then
+      printf '[PrinterPal] Missing Python modules: %s\n' "${missing[*]}" >&2
+    fi
+    if [[ "${#missing_cmds[@]}" -gt 0 ]]; then
+      printf '[PrinterPal] Missing commands: %s\n' "${missing_cmds[*]}" >&2
+    fi
+    if [[ "${UPDATE_ONLY}" == "true" ]]; then
+      die "Update mode skips package installation. Re-run without --update to install dependencies."
+    fi
+  fi
+}
+
 UPDATE_ONLY=false
 for arg in "$@"; do
   case "${arg}" in
@@ -95,6 +139,8 @@ fi
 if ! cmd_exists python3; then
   die "python3 not installed (unexpected)."
 fi
+
+check_runtime_deps
 
 PYVER="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
 log "Python version: ${PYVER}"
